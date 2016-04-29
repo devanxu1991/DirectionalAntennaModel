@@ -1,0 +1,114 @@
+#include <ns3/log.h>
+#include <ns3/double.h>
+#include <cmath>
+#include <vector>
+
+#include "antenna-model.h"
+#include "conic-antenna-model.h"
+#include "mobility-model.h"
+
+
+namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE ("ConicAntennaModel");
+
+NS_OBJECT_ENSURE_REGISTERED (ConicAntennaModel);
+
+
+TypeId 
+ConicAntennaModel::GetTypeId ()
+{
+  static TypeId tid = TypeId ("ns3::ConicAntennaModel")
+    .SetParent<AntennaModel> ()
+    .SetGroupName("Antenna")
+    .AddConstructor<ConicAntennaModel> ()
+    .AddAttribute ("AntennaBeamwidth",
+                   "The main lobe beam width (degrees)",
+                   DoubleValue (60),
+                   MakeDoubleAccessor (&ConicAntennaModel::SetBeamwidth,
+                                       &ConicAntennaModel::GetBeamwidth),
+                   MakeDoubleChecker<double> (0, 180))
+	.AddAttribute ("AntennaOrientation",
+				                   "The angle (degrees) that expresses the orientation of the antenna on the x-y plane relative to the x axis",
+				                   DoubleValue (0.0),
+				                   MakeDoubleAccessor (&ConicAntennaModel::SetOrientation,
+				                                       &ConicAntennaModel::GetOrientation),
+                   MakeDoubleChecker<double> (0, 360))
+   .AddAttribute ("AntennaInclination",
+                   "The angle (degrees) that expresses the inclination of the antenna relative to the z axis",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&ConicAntennaModel::SetInclination,
+                                       &ConicAntennaModel::GetInclination),
+                   MakeDoubleChecker<double> (0,180))
+  ;
+  return tid;
+}
+
+void
+ConicAntennaModel::SetBeamwidth (double beamwidthDegrees)
+{ 
+  NS_LOG_FUNCTION (this << beamwidthDegrees);
+  m_beamwidthRadians = DegreesToRadians (beamwidthDegrees);
+}
+
+double
+ConicAntennaModel::GetBeamwidth () const
+{
+  return RadiansToDegrees (m_beamwidthRadians);
+}
+
+void 
+ConicAntennaModel::SetOrientation (double orientationDegrees)
+{
+  NS_LOG_FUNCTION (this << orientationDegrees);
+  m_antennaorientationRadians = DegreesToRadians (orientationDegrees);
+}
+
+double
+ConicAntennaModel::GetOrientation () const
+{
+  return RadiansToDegrees (m_antennaorientationRadians);
+}
+
+void
+ConicAntennaModel::SetInclination(double inclinationDegrees)
+{
+ NS_LOG_FUNCTION (this << inclinationDegrees);
+  m_antennainclinationRadians = DegreesToRadians (inclinationDegrees);
+}
+
+ double
+ ConicAntennaModel::GetInclination() const
+{
+  return RadiansToDegrees (m_antennainclinationRadians);
+}
+
+//计算出b相对于a的天线坐标系统的方位b.theta
+Vector
+ConicAntennaModel::CalculateAngles(Vector a, Vector b)
+{
+	Vector v;
+	v.x=b.x*cos(Angles(a).phi)+b.y*sin(Angles(a).phi);
+	v.y=b.y*cos(Angles(a).theta)*cos(Angles(a).phi)+b.z*sin(Angles(a).theta)-b.x*cos(Angles(a).theta)*sin(Angles(a).phi);
+	v.z=b.x*sin(Angles(a).theta)*sin(Angles(a).phi)-b.y*sin(Angles(a).theta)*cos(Angles(a).phi)+b.z*cos(Angles(a).theta);
+	return v;
+}
+//假设b相对于a的天线坐标系统theta满足小于主瓣宽度/2，天线增益为5，此外增益为0;
+double 
+ConicAntennaModel::GetGainDb (Angles a)
+{
+ //NS_LOG_FUNCTION (this << b);
+
+  double gainDb=0;
+
+  if((a.theta-m_antennainclinationRadians)<= m_beamwidthRadians/2)
+	  gainDb=5;
+  else
+      gainDb=0;
+
+  NS_LOG_LOGIC ("gain = " << gainDb << " dB");
+  return gainDb;
+}
+}
+
+
